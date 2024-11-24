@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <math.h>
 #include "jpegrw.h"
 
 // local routines
@@ -19,27 +22,27 @@ static void compute_image( imgRawImage *img, double xmin, double xmax,
 static void show_help();
 
 
-int main( int argc, char *argv[] )
-{
+int main( int argc, char *argv[]) {
 	char c;
 
 	// These are the default configuration values used
 	// if no command line arguments are given.
-	const char *outfile = "mandel.jpg";
+	char outfile[14];
 	double xcenter = 0;
 	double ycenter = 0;
-	double xscale = 4;
-	double yscale = 0; // calc later
+	double xscale_0 = 4;
+	double yscale_0 = 0; // calc later
+	int    total_images = 50; // Total number of images
 	int    image_width = 1000;
 	int    image_height = 1000;
 	int    max = 1000;
+	int    num_proc = 1;
 
 	// For each command line argument given,
 	// override the appropriate configuration value.
 
-	while((c = getopt(argc,argv,"x:y:s:W:H:m:o:h"))!=-1) {
-		switch(c) 
-		{
+	while((c = getopt(argc,argv,"x:y:s:W:H:m:o:n:i:h"))!=-1) {
+		switch(c) {
 			case 'x':
 				xcenter = atof(optarg);
 				break;
@@ -47,7 +50,7 @@ int main( int argc, char *argv[] )
 				ycenter = atof(optarg);
 				break;
 			case 's':
-				xscale = atof(optarg);
+				xscale_0 = atof(optarg);
 				break;
 			case 'W':
 				image_width = atoi(optarg);
@@ -59,7 +62,13 @@ int main( int argc, char *argv[] )
 				max = atoi(optarg);
 				break;
 			case 'o':
-				outfile = optarg;
+				strcpy(outfile, optarg); 
+				break;
+			case 'n':
+				num_proc = atoi(optarg);
+				break;
+			case 'i':
+				total_images = atoi(optarg);
 				break;
 			case 'h':
 				show_help();
@@ -69,27 +78,76 @@ int main( int argc, char *argv[] )
 	}
 
 	// Calculate y scale based on x scale (settable) and image sizes in X and Y (settable)
-	yscale = xscale / image_width * image_height;
-
+	yscale_0 = xscale_0 / image_width * image_height;
 	// Display the configuration of the image.
-	printf("mandel: x=%lf y=%lf xscale=%lf yscale=%1f max=%d outfile=%s\n",xcenter,ycenter,xscale,yscale,max,outfile);
+	printf("mandel: x=%lf y=%lf xscale=%lf yscale=%1f max=%d outfile=%s\n",xcenter,ycenter,xscale_0,yscale_0,max,outfile);
 
-	// Create a raw image of the appropriate size.
-	imgRawImage* img = initRawImage(image_width,image_height);
+	
+		printf("XScale: %f\n YScale: %f\n", xscale_0, yscale_0);
 
-	// Fill it with a black
-	setImageCOLOR(img,0);
+        int range_per_proc = total_images / num_proc; // Divide evenly among processes
+        int remainder = total_images % num_proc;     // Handle leftover images
 
-	// Compute the Mandelbrot image
-	compute_image(img,xcenter-xscale/2,xcenter+xscale/2,ycenter-yscale/2,ycenter+yscale/2,max);
+        pid_t pids[num_proc];  // Array to hold PIDs of child processes
 
-	// Save the image in the stated file.
-	storeJpegImageFile(img,outfile);
+        for (int i = 0; i < num_proc; i++) {
+            pid_t pid = fork(); // Creates child process
+			// Store the child's PID within parent immediately, important
+			// to avoid race condition between child pid population and
+			// parent waitpid array check
+                pids[i] = pid;
+            if (pid == 0) { // Child process
+                // Gathered this start and end calculation from GeeksForGeeks
+                int start = i * range_per_proc + (i < remainder ? i : remainder);  // First `remainder` processes get 1 extra image
+                int end = start + range_per_proc - 1 + (i < remainder ? 1 : 0);    // Adjust for remainder
 
-	// free the mallocs
-	freeRawImage(img);
+                // Ensure no process overshoots the total number of images
+                if (end >= total_images) {
+                    end = total_images - 1;
+                }
 
-	return 0;
+                // Debug: Print which process is handling which range
+                printf("Process %d handling range %d to %d\n", i, start, end);
+
+                // Generate images for this range
+                for (int j = start; j <= end; j++) {
+			
+			        // This equation will create picture with exponentially decaying scale
+			        // xscale = xscale
+			        // scale = scale_0 * e^(-k*(j_norm/totalimages)) exponentially decay function
+		    	    // Specifically used this with normalized j so that independent processes
+		        	// Can calculate images with scales line up with each other when combined
+		        	int k = 5.0; // Variable controlling rate of decay
+		        	int j_norm = j + start; // Calculate normalized j
+		        	double xscale = xscale_0 * exp(-k * (double)j_norm / total_images);
+		        	double yscale = yscale_0 * exp(-k * (double)j_norm / total_images);
+                    char outfile[20];
+
+                    snprintf(outfile, sizeof(outfile), "mandel%d.jpg", j);
+                    imgRawImage* img = initRawImage(image_width, image_height);
+                    setImageCOLOR(img, 0);
+                    compute_image(img, xcenter - xscale / 2, xcenter + xscale / 2,
+                    ycenter - yscale / 2, ycenter + yscale / 2, max);
+                    storeJpegImageFile(img, outfile);
+                    freeRawImage(img);
+					printf("Image %d is finished\n", j);
+					fflush(stdout);  // Ensure output is immediately written to the terminal
+					// intentional so that each moment image is created, the speed can be easily
+					// seen from the terminal and avoid confusion in regard to efficiency
+                }
+                exit(0); // Child exits after generating images
+            } else if (pid < 0) {
+                perror("Fork failed");
+                return 1;
+            }
+        }       
+        // Parent process waits for all child processes
+        for (int i = 0; i < num_proc; i++) {
+            waitpid(pids[i], NULL, 0);  // Wait for each child to finish
+        }
+        printf("All processes have finished.\n");
+        return 0;
+
 }
 
 
@@ -108,9 +166,10 @@ int iterations_at_point( double x, double y, int max )
 	int iter = 0;
 
 	while( (x*x + y*y <= 4) && iter < max ) {
+		// Decided to change squared calculation into a cubic
+		double xt = x*x - y*y + x0; // Real part of z^2 + c
+		double yt = 2*x*y + y0;  // Imaginary part of z^2 + c
 
-		double xt = x*x - y*y + x0;
-		double yt = 2*x*y + y0;
 
 		x = xt;
 		y = yt;
@@ -158,11 +217,37 @@ Convert a iteration number to a color.
 Here, we just scale to gray with a maximum of imax.
 Modify this function to make more interesting colors.
 */
-int iteration_to_color( int iters, int max )
-{
-	int color = 0xFFFFFF*iters/(double)max;
-	return color;
+int iteration_to_color(int iters, int max) {
+    double t = (double)iters / max; // Normalized iteration count (0 to 1)
+	// Uses normalized t between 0 and 1  and multiplies by 360 to get angle
+    // Using 1440 degrees represents four full cycles for more variation
+    double hue = t * 1440.0;         // Map t to hue (0 to 1440 degrees)
+
+    // Convert hue to RGB
+	// Hue is an angle on a color wheel
+	// Saturation - color intensity and Value - brightness
+    double r, g, b;
+    int i = (int)(hue / 60.0); // determining which section color fals in R/G/B
+    double f = (hue / 60.0) - i; // Fractional position in hue within 60 deg
+    double q = 1.0 - f; // color intensity adjustment, based on f and s (sat)
+
+    switch (i % 6) {
+        case 0: r = 1.0; g = f; b = 0.0; break;
+        case 1: r = q; g = 1.0; b = 0.0; break;
+        case 2: r = 0.0; g = 1.0; b = f; break;
+        case 3: r = 0.0; g = q; b = 1.0; break;
+        case 4: r = f; g = 0.0; b = 1.0; break;
+        case 5: r = 1.0; g = 0.0; b = q; break;
+    }
+
+    int red = (int)(r * 255);
+    int green = (int)(g * 255);
+    int blue = (int)(b * 255);
+	// return statement combines red green and blue values into a 32bit integer,
+	// which is the bit length standard for RGB values
+    return (red << 16) | (green << 8) | blue;
 }
+
 
 
 // Show help message

@@ -97,7 +97,6 @@ int main( int argc, char *argv[]) {
 			// parent waitpid array check
                 pids[i] = pid;
             if (pid == 0) { // Child process
-                // Gathered this start and end calculation from GeeksForGeeks
                 int start = i * range_per_proc + (i < remainder ? i : remainder);  // First `remainder` processes get 1 extra image
                 int end = start + range_per_proc - 1 + (i < remainder ? 1 : 0);    // Adjust for remainder
 
@@ -106,7 +105,7 @@ int main( int argc, char *argv[]) {
                     end = total_images - 1;
                 }
 
-                // Debug: Print which process is handling which range
+                // Print which process is handling which range
                 printf("Process %d handling range %d to %d\n", i, start, end);
 
                 // Generate images for this range

@@ -99,7 +99,7 @@ imgRawImage* loadJpegImageFile(const char* lpFilename)
 	fHandle = fopen(lpFilename, "rb");
 	if(fHandle == NULL) {
 		#ifdef DEBUG
-			fprintf(stderr, "%s:%u: Failed to read file %s\n", __FILE__, __LINE__, lpFilename);
+			fprintf(stderr, "s:%u: Failed to read file %s\n", __FILE__, __LINE__, lpFilename);
 		#endif
 		return NULL; /* ToDo */
 	}

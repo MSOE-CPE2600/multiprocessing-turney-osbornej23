@@ -14,7 +14,7 @@ compilation of the jpgs using `ffmpeg` will work as it increments through by dec
 ## Result Analysis
 Results are as expected, quicker speeds start to flatline starting around 10 processes which is
 the total number of cores in my computer model (2 performance & 8 efficiency). As the number of 
-processing being created continues, the proportion of gains in speed between each additional
+processes being created continues, the proportion of gains in speed between each additional
 process follows a downward trend. This is due to the nature of overhead when creating parallel
 processes, and when not increasing your calculation size, in this case 50 images, the overhead
 starts to make more of a negative impact on performance gain as you use more cores. If they were

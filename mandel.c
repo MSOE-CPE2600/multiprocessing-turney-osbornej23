@@ -142,7 +142,7 @@ int main( int argc, char *argv[]) {
 			        // scale = scale_0 * e^(-k*(j_norm/totalimages)) exponentially decay function
 		    	    // Specifically used this with normalized j so that independent processes
 		        	// Can calculate images with scales line up with each other when combined
-		        	int k = 5.0; // Variable controlling rate of decay
+		        	int k = 15.0; // Variable controlling rate of decay
 		        	int j_norm = j + start; // Calculate normalized j
 		        	double xscale = xscale_0 * exp(-k * (double)j_norm / total_images);
 		        	double yscale = yscale_0 * exp(-k * (double)j_norm / total_images);

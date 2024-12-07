@@ -9,18 +9,28 @@ calculated start and end times. (Certain processes will contain extra remainder 
 All `mandel*.jpg` images have numbered file names dependent on what image they are generating
 within their given start and end range. Lastly, all files are numbered in correct order, so
 compilation of the jpgs using `ffmpeg` will work as it increments through by decimal value.
+Threads have been implemented to divide up the processing of individual images. 
+Multiple threads process horizontal sections of an image at the same time when called to 
+their respective functions containing a struct of necessary data for computation
 ## Graph of runtime results
-![Lab11Runtime](https://github.com/user-attachments/assets/96e335d5-3ebb-465f-b276-381a51e14e99)
+X axis: Number of processes
+Y axis: Number of threads
+Z axis: Time in seconds
+Red (7 Processes)
+Blue (8 Processes)
+Green (9 Processes)
+![image](https://github.com/user-attachments/assets/a3c411dd-98bf-4dba-a003-8de451e2067f)
+![image](https://github.com/user-attachments/assets/0a73f726-185d-42e1-afaa-445df8c371a1)
+![image](https://github.com/user-attachments/assets/ef6f825b-0e01-43c6-aeed-d95859dbcd2b)
+Below is a link to the `interactive Desmos graph`:
+https://www.desmos.com/3d/gzn7r7btbc
 ## Result Analysis
-Results are as expected, quicker speeds start to flatline starting around 10 processes which is
-the total number of cores in my computer model (2 performance & 8 efficiency). As the number of 
-processes being created continues, the proportion of gains in speed between each additional
-process follows a downward trend. This is due to the nature of overhead when creating parallel
-processes, and when not increasing your calculation size, in this case 50 images, the overhead
-starts to make more of a negative impact on performance gain as you use more cores. If they were
-many more images, say 1000, using all 10 cores would likely prove very beneficial, whereas using
-10 cores to generate only 2 images could prove more time consuming than using less. Taking longer
-to finish executing code even though a computer is using more processes in parallel can occur
-as the code is too short / not intensive to warrant the overhead and constant switching back and 
-forth between cores if they are not needed.
-
+Results are logical, around 7,8, and 9 processes is where the program experiences its fastest
+speeds for generating specifically 50 images. Including less than 7 processes or more than 9
+processes was unnecessary as logically these will either get slower with much more overhead
+or much slower with less processing power. I tested 7, 8, and 9 processes each with 8-12
+threads each. The sweet spot for processing times occurred with 8 processes and 12 threads.
+The time for this was 15.113s. 9 processes had its quickest time with 9 threads at 16.211s and
+7 processes had its quickest time with 12 threads at 15.307s. Overall, avoiding major overhead 
+with increasing processes while maximizing the thread count for computational power seems to be
+the reason that 8 processors and 12 threads is the quickest time I was able to achieve.

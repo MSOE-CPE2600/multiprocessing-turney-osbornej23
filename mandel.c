@@ -5,6 +5,10 @@
 //
 //  Converted to use jpg instead of BMP and other minor changes
 //  
+//  Changes made by Jadyn Osborne CPE 2600 12/6/2024
+//  All implementation changes:
+//  Multiprocessing handles multiple groups of images
+//  Threads are used to each individually create horizontal slices of the mandel image
 ///
 #include <stdlib.h>
 #include <stdio.h>
@@ -194,7 +198,6 @@ int iterations_at_point( double x, double y, int max )
 		// Decided to change squared calculation into a cubic
 		double xt = x*x - y*y + x0; // Real part of z^2 + c
 		double yt = 2*x*y + y0;  // Imaginary part of z^2 + c
-
 
 		x = xt;
 		y = yt;

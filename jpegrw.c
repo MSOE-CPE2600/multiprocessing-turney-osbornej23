@@ -5,6 +5,8 @@
 //
 //  Minor changes made to some types.
 //  Compile with -ljpeg
+//
+// Jadyn Osborne (no changes made to this file)
 ///
 #include <stdlib.h>
 #include <stdio.h>
